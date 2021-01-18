@@ -1,0 +1,22 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('git clone') {
+            steps {
+                echo 'Clone code from git hub'
+            }
+        }
+
+        stage('Build Artifact Using mvn') {
+            steps {
+                echo 'creatd artifcat plase deploye'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                echo 'deployed artifact'
+            }
+        }
+    }
+}

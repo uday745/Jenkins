@@ -1,0 +1,38 @@
+pipeline {
+    agent any
+    
+      environment {
+          PATH="/opt/apache-maven-3.6.3/bin:$PATH"
+      }
+    
+    stages {
+        stage ("Clone the code") {
+            steps{
+                script {
+                    // Let's clone the source
+                    git 'https://github.com/uday745/new_mvn';
+                }
+            }
+        }
+         stage ("mvn build") {
+            steps {
+                script {
+                     // If you are using windows then you should use bat step
+                    // since unit testing is out of the scope we skip them
+                    sh '''
+                    mvn package
+                    '''
+                }
+            }
+         }
+         stage ("Deploy the tomcat") {
+             steps {
+                 script {
+                     // deploying the war in tomcat server
+                     deploy adapters: [tomcat8(credentialsId: 'Tomcat', path: '', url: 'http://192.168.43.182:8686/')], contextPath: '/sample', war: '**/*.war'
+                     
+                 }
+             }
+         }
+    }  
+}

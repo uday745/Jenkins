@@ -1,0 +1,94 @@
+node
+{
+   
+    stage("SCM Checkout")
+    {
+        git credentialsId: '82acec17-489c-447e-b61a-b03b6ee07b97', url: 'https://github.com/anv22/bmp-product-inventory-business-services.git'
+    }
+    stage("Maveen Build")
+    {
+       def mvnHome = tool name: 'Maveen', type: 'maven'
+       env.JAVA_HOME = tool name: 'JDK', type: 'jdk'
+       bat "\"${mvnHome}\"\\bin\\mvn -B verify"
+            }
+      stage('Archiving Artifacts')
+            {
+            archiveArtifacts artifacts: "target/*.jar", onlyIfSuccessful: true 
+                
+            }
+            stage('Build Docker Image') 
+            {
+      app = docker.build("bm/bmp-product-inventory-business-service", "./")
+    }
+    
+    stage('Push Docker Image')
+     {
+
+         docker.withRegistry('http://192.168.0.111:5000','nexus') 
+         {
+          app.push("latest")
+
+            // app.push("${env.BUILD_NUMBER}")
+         }
+    }
+    }
+d1472a2d465ad66c4fb25c22bb8003f3bb76a91e
+
+node
+{
+timestamps{
+stage('CheckoutCode')
+  {
+  git branch: 'master', credentialsId: 'github', url: 'https://github.com/MSSSBFSAJBJ/api-access-management-service.git'
+  }
+   stage('MavenBuild')
+ {
+  sh "mvn clean package"
+ }
+ stage('Sonar Report')
+ {
+     sh "mvn sonar:sonar"
+ }
+ stage ("Build Artifacts")
+ {
+     archiveArtifacts artifacts: "target/*.war", onlyIfSuccessful: true
+ }
+ stage("Deploy the war in the Nexus")
+ {
+     sh "mvn deploy"
+ }
+ stage("Deploying The war into Tomcat server")
+ {
+  sshagent(['tomcat-user']) {
+ sh "scp  -o StrictHostKeyChecking=no target/api-access-management-service-1.0-SNAPSHOTnull.war ec2-user@54.158.0.55:/opt/apache-tomcat-8.5.69/webapps/api-access-management-service-1.0-SNAPSHOTnull.war"
+}
+
+}
+
+}
+}
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.0.list
+sudo apt-get install -y mongodb-org=4.0.13 mongodb-org-database=4.0.13 mongodb-org-server=4.0.13 mongodb-org-shell=4.0.13 mongodb-org-mongos=4.0.13 mongodb-org-tools=4.0.13
+sudo apt-get install -y mongodb-org=4.0.13 mongodb-org-server=4.0.13 mongodb-org-shell=4.0.13 mongodb-org-mongos=4.0.13 mongodb-org-tools=4.0.13
+{
+    "insecure-registries" : [ "10.0.5.16:5000" ]
+}
+
+stage('Deploy to K8s') {
+        echo "Deploying to K8s..."
+        //sh '/home/ubuntu/kubectl --kubeconfig=Kubeconfig.yml delete deployment encryption-service -n dtag-dev'
+ 	   //sh '/home/ubuntu/kubectl --kubeconfig=Kubeconfig.yml delete svc encryption-service-svc -n dtag-dev'
+		// kubernetesDeploy configs: 'Kubedeploy.yml,Kubeservice.yml', kubeConfig: [path: ''], kubeconfigId: 'kubeconfig', secretName: '', ssh: [sshCredentialsId: '*', sshServer: ''], textCredentials: [certificateAuthorityData: '', clientCertificateData: '', clientKeyData: '', serverUrl: 'https://']
+    }   
+stage('Deploy to K8s') {
+        echo "Deploying to K8s..."
+        withKubeConfig(caCertificate: '', clusterName: 'pannet-dev', contextName: '', credentialsId: '36330899-3c65-4c71-b83e-ce4f7bf9db4b', namespace: 'pannet-dev', serverUrl: 'https://172.29.1.175/v3') {
+    // some block
+                sh 'kubectl apply -f  Kubedeploy.yml -n pannet-dev'
+                sh 'kubectl apply -f  Kubeservice.yml -n pannet-dev'
+            }
+        //sh 'kubectl delete deployment aggregation-business-service -n pannet-dev'
+        //sh 'kubectl delete svc aggregation-business-service-svc -n pannet-dev'
+    // kubernetesDeploy configs: 'Kubedeploy.yml,Kubeservice.yml', kubeConfig: [path: ''], kubeconfigId: 'kubeconfig', secretName: '', ssh: [sshCredentialsId: '*', sshServer: ''], textCredentials: [certificateAuthorityData: '', clientCertificateData: '', clientKeyData: '', serverUrl: 'https://']
+        }                   
+}

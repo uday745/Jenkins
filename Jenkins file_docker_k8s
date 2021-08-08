@@ -1,0 +1,102 @@
+pipeline 
+{
+    agent{
+        label "master"
+    }
+    environment{
+        BUILD_NUMBERr = echo 'Build Number: ' + env.BUILD_NUMBER
+        image_name = "aggregation-business-service:${BUILD_NUMBER}"
+        Image_URL_WITH_Tag = "${Nexus_URL}/aggregation-business-service:${Docker_TAG}"
+    }
+        
+    tools {
+        maven "maven"
+    }
+    stages {
+        stage("Env Variables") {
+            steps {
+                sh "printenv"
+            }
+        }
+        stage("Clone The Code from GitHub") {
+            steps
+            {
+                script {
+                   git branch: 'master', credentialsId: 'git', url: 'https://github.com/SBFSAJBJMSS/aggregation-business-service.git' 
+                }
+            }
+            
+        }
+            stage("Build The Code") {
+                steps {
+                    script {
+                        sh "mvn clean install"
+                        }
+            }
+        }
+  stage("Sonar Report") {
+      steps {
+          script {
+              withSonarQubeEnv('sonarserver'){
+              sh "mvn sonar:sonar"
+    }
+          }
+      }
+   }
+   stage("Packing The Artifactory into War"){
+       steps {
+           script {
+                 archiveArtifacts artifacts: "target/*.war", onlyIfSuccessful: true
+           }
+       }
+   }
+
+   stage("Deploy a War Into Nexus") {
+       steps {
+           script {
+               sh "mvn deploy"
+           }
+       }
+   }
+        stage("Docker Build") {
+            steps {
+                script {
+                    echo "Build number is ${BUILD_NUMBER}"
+                    image = docker.build("${image_name}", "./")
+                }
+            }
+        }
+  stage("push The Docker Image into Nexus") {
+      steps {
+          script {
+              docker.withRegistry('http://52.54.107.225:5000','nexus') {
+                 dockerimage = image.push("${BUILD_NUMBER}")
+          }
+          }
+      }
+  }
+  
+stage("Deploy to Rancher")
+{
+    steps{
+        script {
+            sh "chmod +x updateimage.sh"
+            sh "./updateimage.sh ${dockerimage}"
+            sshagent(['rancher']) {
+           //sh "scp  -o StrictHostKeyChecking=no Kubeservice.yml Kubedeploy.yml ubuntu@3.236.153.134:/home/ubuntu/"
+           sh '/home/ubuntu/kubectl --kubeconfig=Kubeconfig.yml delete deployment bmp-aggregation-bs -n dev-kunu'
+ 	       sh '/home/ubuntu/kubectl --kubeconfig=Kubeconfig.yml delete svc bmp-aggregation-bs -n dev-kunu'
+           kubernetesDeploy configs: 'Kubedeploy.yml,Kubeservice.yml', kubeConfig: [path: ''], kubeconfigId: 'kubeconfig', secretName: '', textCredentials: [certificateAuthorityData: '', clientCertificateData: '', clientKeyData: '', serverUrl: 'https://']
+          /* try {
+               sh "ssh ubuntu@44.193.72.136 kubectl apply -f ."
+           }
+           catch(error){
+               sh "ssh ubuntu@44.193.72.136 kubectl create -f ."
+           }*/
+}
+        }
+    }
+}
+
+  }
+}

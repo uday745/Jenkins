@@ -1,0 +1,14 @@
+if(BUILD_NUMBER.toInteger() % 2 == 0) {
+    agentLabel = 'agent2' //Even
+} else {
+    agentLabel = 'agent1' //Odd
+}
+
+pipeline {
+    agent {
+        label agentLabel
+    }
+    stages {
+        ...
+    }
+}
